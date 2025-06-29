@@ -1159,23 +1159,17 @@ Example:
                         broodmother: {
                             icon: 'ark-wiki-broodmother.webp',
                             artifacts: ['hunter', 'clever', 'massive'],
-                            tributes: {
-
-                            }
+                            tributes: {}
                         },
                         megapithecus: {
                             icon: 'ark-wiki-megapithecus.webp',
                             artifacts: ['brute', 'devourer', 'pack'],
-                            tributes: {
-
-                            }
+                            tributes: {}
                         },
                         dragon: {
                             icon: 'ark-wiki-dragon.webp',
                             artifacts: ['cunning', 'immune', 'skylord', 'strong'],
-                            tributes: {
-
-                            }
+                            tributes: {}
                         },
                         overseer: {
                             icon: 'ark-wiki-overseer.webp',
@@ -1359,15 +1353,15 @@ Example:
             }
             
             // Initialize Firebase config
-            const firebaseConfig = {
-			  apiKey: "AIzaSyAjRf1Fy8wmUhpVkCH7HFafQ-45DAfYpLQ",
-			  authDomain: "arkbosses-7ee8d.firebaseapp.com",
-			  databaseURL: "https://arkbosses-7ee8d-default-rtdb.firebaseio.com",
-			  projectId: "arkbosses-7ee8d",
-			  storageBucket: "arkbosses-7ee8d.firebasestorage.app",
-			  messagingSenderId: "902367347707",
-			  appId: "1:902367347707:web:fab546c35ef5d72523815e"
-			};
+            let firebaseConfig = {
+                apiKey: "AIzaSyAjRf1Fy8wmUhpVkCH7HFafQ-45DAfYpLQ",
+                authDomain: "arkbosses-7ee8d.firebaseapp.com",
+                databaseURL: "https://arkbosses-7ee8d-default-rtdb.firebaseio.com",
+                projectId: "arkbosses-7ee8d",
+                storageBucket: "arkbosses-7ee8d.firebasestorage.app",
+                messagingSenderId: "902367347707",
+                appId: "1:902367347707:web:fab546c35ef5d72523815e"
+            };
             
             // Check for saved Firebase config
             if (savedSettings) {
@@ -1414,26 +1408,39 @@ Example:
                             app.database = firebase.database();
                             
                             const settings = JSON.parse(localStorage.getItem('arkTrackerSettings') || '{}');
-                            const tribePath = settings.tribeName ? 
-                                `tribes/${settings.tribeName.replace(/[.#$\[\]]/g, '_')}/bossTracker` : 
-                                'bossTracker';
                             
-                            app.dataRef = app.database.ref(tribePath);
+                            // Create the base tribe path
+                            const baseTribePath = settings.tribeName ? 
+                                `tribes/${settings.tribeName.replace(/[.#$\[\]]/g, '_')}` : 
+                                'default';
+                            
+                            // Boss tracker reference
+                            app.dataRef = app.database.ref(`${baseTribePath}/bossTracker`);
                             app.dataRef.on('value', (snapshot) => {
                                 app.checkedItems = snapshot.val() || {};
                                 renderBosses();
                                 updateStatus('🟢 Connected - Real-time sync active', '#81c784');
                             });
                             
-                            // Sync inventory if using Firebase
-                            app.inventoryRef = app.database.ref(tribePath + '_inventory');
+                            // Inventory reference - use a cleaner path structure
+                            app.inventoryRef = app.database.ref(`${baseTribePath}/inventory`);
+                            console.log('Inventory path:', `${baseTribePath}/inventory`);
+                            
                             app.inventoryRef.on('value', (snapshot) => {
                                 const data = snapshot.val();
+                                console.log('Inventory data from Firebase:', data);
                                 if (data) {
                                     app.inventory = data;
                                     updateInventoryCounter();
+                                    // Update UI if inventory modal is open
+                                    if (document.getElementById('inventoryModalOverlay').classList.contains('active')) {
+                                        loadInventoryModal();
+                                    }
                                 }
+                            }, (error) => {
+                                console.error('Inventory listener error:', error);
                             });
+                            
                         } catch (error) {
                             console.error('Firebase initialization error:', error);
                             app.useFirebase = false;
@@ -2022,65 +2029,113 @@ Example:
                 updateInventorySummary();
             }
             
-            // Save inventory
+            // Save inventory - FIXED VERSION
             function saveInventory() {
-                // Save artifacts
-                Object.keys(app.itemNames.artifacts).forEach(id => {
-                    const input = document.getElementById(`inv-artifact-${id}`);
-                    if (input) {
-                        const value = parseInt(input.value) || 0;
-                        if (value > 0) {
-                            app.inventory.artifacts[id] = value;
-                        } else {
-                            delete app.inventory.artifacts[id];
+                console.log('Starting inventory save...');
+                
+                // Show saving state
+                const saveBtn = document.getElementById('inventorySaveBtn');
+                const originalText = saveBtn.textContent;
+                saveBtn.textContent = 'Saving...';
+                saveBtn.disabled = true;
+                
+                try {
+                    // Save artifacts
+                    Object.keys(app.itemNames.artifacts).forEach(id => {
+                        const input = document.getElementById(`inv-artifact-${id}`);
+                        if (input) {
+                            const value = parseInt(input.value) || 0;
+                            if (value > 0) {
+                                app.inventory.artifacts[id] = value;
+                            } else {
+                                delete app.inventory.artifacts[id];
+                            }
                         }
-                    }
-                });
-                
-                // Save tributes
-                Object.keys(app.itemNames.tributes).forEach(id => {
-                    const input = document.getElementById(`inv-tribute-${id}`);
-                    if (input) {
-                        const value = parseInt(input.value) || 0;
-                        if (value > 0) {
-                            app.inventory.tributes[id] = value;
-                        } else {
-                            delete app.inventory.tributes[id];
+                    });
+                    
+                    // Save tributes
+                    Object.keys(app.itemNames.tributes).forEach(id => {
+                        const input = document.getElementById(`inv-tribute-${id}`);
+                        if (input) {
+                            const value = parseInt(input.value) || 0;
+                            if (value > 0) {
+                                app.inventory.tributes[id] = value;
+                            } else {
+                                delete app.inventory.tributes[id];
+                            }
                         }
-                    }
-                });
-                
-                // Save boss trophies
-                Object.keys(app.itemNames.bossTrophies).forEach(id => {
-                    const input = document.getElementById(`inv-trophy-${id}`);
-                    if (input) {
-                        const value = parseInt(input.value) || 0;
-                        if (value > 0) {
-                            app.inventory.bossTrophies[id] = value;
-                        } else {
-                            delete app.inventory.bossTrophies[id];
+                    });
+                    
+                    // Save boss trophies
+                    Object.keys(app.itemNames.bossTrophies).forEach(id => {
+                        const input = document.getElementById(`inv-trophy-${id}`);
+                        if (input) {
+                            const value = parseInt(input.value) || 0;
+                            if (value > 0) {
+                                app.inventory.bossTrophies[id] = value;
+                            } else {
+                                delete app.inventory.bossTrophies[id];
+                            }
                         }
+                    });
+                    
+                    // Always save to localStorage first
+                    localStorage.setItem('arkInventory', JSON.stringify(app.inventory));
+                    console.log('Saved to localStorage:', app.inventory);
+                    
+                    // Save to Firebase if connected
+                    if (app.useFirebase && app.inventoryRef) {
+                        console.log('Attempting Firebase save...');
+                        app.inventoryRef.set(app.inventory)
+                            .then(() => {
+                                console.log('Firebase save successful!');
+                                // Reset button
+                                saveBtn.textContent = originalText;
+                                saveBtn.disabled = false;
+                                
+                                // Update UI
+                                updateInventoryCounter();
+                                if (app.showInventory) {
+                                    renderBosses();
+                                }
+                                
+                                alert('Inventory saved successfully to Firebase!');
+                                document.getElementById('inventoryModalOverlay').classList.remove('active');
+                            })
+                            .catch((error) => {
+                                console.error('Firebase save error:', error);
+                                // Reset button
+                                saveBtn.textContent = originalText;
+                                saveBtn.disabled = false;
+                                
+                                alert(`Firebase save failed: ${error.message}\n\nInventory saved locally only.`);
+                            });
+                    } else {
+                        // Local only - no Firebase
+                        console.log('No Firebase connection, saved locally only');
+                        
+                        // Reset button
+                        saveBtn.textContent = originalText;
+                        saveBtn.disabled = false;
+                        
+                        // Update UI
+                        updateInventoryCounter();
+                        if (app.showInventory) {
+                            renderBosses();
+                        }
+                        
+                        alert('Inventory saved locally!');
+                        document.getElementById('inventoryModalOverlay').classList.remove('active');
                     }
-                });
-                
-                // Save to localStorage
-                localStorage.setItem('arkInventory', JSON.stringify(app.inventory));
-                
-                // Save to Firebase if connected
-                if (app.useFirebase && app.inventoryRef) {
-                    app.inventoryRef.set(app.inventory);
+                    
+                } catch (error) {
+                    console.error('Save inventory error:', error);
+                    // Reset button
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                    
+                    alert(`Error saving inventory: ${error.message}`);
                 }
-                
-                // Update display if inventory toggle is on
-                if (app.showInventory) {
-                    renderBosses();
-                }
-                
-                // Update counter
-                updateInventoryCounter();
-                
-                alert('Inventory saved successfully!');
-                document.getElementById('inventoryModalOverlay').classList.remove('active');
             }
             
             // Update inventory summary
