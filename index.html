@@ -284,6 +284,8 @@
             color: var(--diff-color);
             transition: color 0.3s ease;
         }
+		
+		
         
         .progress-bar {
             width: 100%;
@@ -597,13 +599,18 @@
             transition: all 0.3s ease;
         }
         
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         .btn-primary {
             background: #4fc3f7;
             color: #000;
             flex: 1;
         }
         
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #29b6f6;
             transform: translateY(-1px);
         }
@@ -614,7 +621,7 @@
             border: 1px solid #3a3a3a;
         }
         
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #3a3a3a;
         }
         
@@ -623,7 +630,7 @@
             color: #fff;
         }
         
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #d32f2f;
         }
         
@@ -904,12 +911,25 @@
             color: #f44336;
         }
         
+        .tribe-notice {
+            background: #4a3a1a;
+            border: 1px solid #6a5a3a;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .tribe-notice strong {
+            color: #ffc107;
+        }
+        
         @media (max-width: 768px) {
             h1 { font-size: 20px; }
             .boss-grid { grid-template-columns: 1fr; }
             .diff-btn { padding: 8px 15px; font-size: 13px; }
             .boss-title { font-size: 18px; }
-            .boss-icon { width: 96px; height: 96px; }
+            .boss-icon { width: 24px; height: 24px; }
             .modal { max-height: 95vh; max-width: 90%; padding: 20px; }
             .req-boss-selector { flex-wrap: wrap; }
             .req-boss-btn { font-size: 12px; padding: 6px 12px; }
@@ -962,6 +982,11 @@
         <div class="status" id="status">Connecting...</div>
     </div>
     
+    <div class="tribe-notice" id="tribeNotice" style="display: none;">
+        <strong>⚠️ No Tribe Set!</strong> 
+        Go to Settings → Enter a Tribe Name to enable Firebase sync
+    </div>
+    
     <div class="instructions" id="instructions">
         <div class="instructions-toggle" id="instructionsToggle">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -1005,26 +1030,9 @@
                 
                 <form id="settingsForm">
                     <div class="form-group">
-                        <label class="form-label" for="firebaseConfig">Firebase Configuration</label>
-                        <textarea class="form-textarea" id="firebaseConfig" placeholder='Paste your Firebase config object here...
-
-Example:
-{
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  databaseURL: "your-database-url",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-sender-id",
-  appId: "your-app-id"
-}'></textarea>
-                        <div class="form-help">Get this from Firebase Console → Project Settings → General → Your apps</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label" for="tribeName">Tribe Name (Optional)</label>
+                        <label class="form-label" for="tribeName">Tribe Name (Required for sync)</label>
                         <input type="text" class="form-input" id="tribeName" placeholder="Enter your tribe name...">
-                        <div class="form-help">This helps organize data if multiple tribes use the same Firebase project</div>
+                        <div class="form-help">This is required to enable Firebase sync with your tribe members</div>
                     </div>
                     
                     <div class="form-actions">
@@ -1135,7 +1143,7 @@ Example:
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Ark Boss Tracker initializing...');
             
-            // App state
+            // App state - with proper initialization
             const app = {
                 currentDifficulty: 'gamma',
                 currentBoss: 'broodmother',
@@ -1146,6 +1154,7 @@ Example:
                 inventoryRef: null,
                 checkedItems: {},
                 editingRequirements: null,
+                // Properly initialize inventory
                 inventory: {
                     artifacts: {},
                     tributes: {},
@@ -1158,18 +1167,31 @@ Example:
                     gamma: {
                         broodmother: {
                             icon: 'ark-wiki-broodmother.webp',
-                            artifacts: ['hunter', 'clever', 'massive'],
-                            tributes: {}
+                            artifacts: ['hunter', 'clever', 'pack'],
+                            tributes: {
+                                'argentavis-talon': 1,
+                                'sauropod-vertebra': 1,
+                                'titanoboa-venom': 1
+                            }
                         },
                         megapithecus: {
                             icon: 'ark-wiki-megapithecus.webp',
                             artifacts: ['brute', 'devourer', 'pack'],
-                            tributes: {}
+                            tributes: {
+                                'megalania-toxin': 1,
+                                'megalodon-tooth': 1,
+                                'spinosaurus-sail': 1
+                            }
                         },
                         dragon: {
                             icon: 'ark-wiki-dragon.webp',
                             artifacts: ['cunning', 'immune', 'skylord', 'strong'],
-                            tributes: {}
+                            tributes: {
+                                'allosaurus-brain': 1,
+                                'basilosaurus-blubber': 1,
+                                'giganotosaurus-heart': 1,
+                                'tusoteuthis-tentacle': 1
+                            }
                         },
                         overseer: {
                             icon: 'ark-wiki-overseer.webp',
@@ -1312,8 +1334,8 @@ Example:
                     'dragon': '🐲',
                     'overseer': '🤖'
                 },
-                
-                bossNames: {
+				
+				bossNames: {
                     'broodmother': 'Broodmother',
                     'megapithecus': 'Megapithecus',
                     'dragon': 'Dragon',
@@ -1337,23 +1359,41 @@ Example:
                         document.getElementById('inventorySwitch').classList.toggle('active', app.showInventory);
                         document.getElementById('inventoryCounter').classList.toggle('active', app.showInventory);
                     }
+                    // Check for tribe name
+                    if (!settings.tribeName) {
+                        document.getElementById('tribeNotice').style.display = 'block';
+                    }
                 } catch (error) {
                     console.error('Error loading saved settings:', error);
                 }
+            } else {
+                // No settings saved - show tribe notice
+                document.getElementById('tribeNotice').style.display = 'block';
             }
             
-            // Load saved inventory
+            // Load saved inventory with proper initialization
             const savedInventory = localStorage.getItem('arkInventory');
             if (savedInventory) {
                 try {
-                    app.inventory = JSON.parse(savedInventory);
+                    const parsed = JSON.parse(savedInventory);
+                    app.inventory = {
+                        artifacts: parsed.artifacts || {},
+                        tributes: parsed.tributes || {},
+                        bossTrophies: parsed.bossTrophies || {}
+                    };
                 } catch (error) {
                     console.error('Error loading saved inventory:', error);
+                    // Reset to empty inventory
+                    app.inventory = {
+                        artifacts: {},
+                        tributes: {},
+                        bossTrophies: {}
+                    };
                 }
             }
             
-            // Initialize Firebase config
-            let firebaseConfig = {
+            // Initialize Firebase config - YOUR CONFIG
+            const firebaseConfig = {
                 apiKey: "AIzaSyAjRf1Fy8wmUhpVkCH7HFafQ-45DAfYpLQ",
                 authDomain: "arkbosses-7ee8d.firebaseapp.com",
                 databaseURL: "https://arkbosses-7ee8d-default-rtdb.firebaseio.com",
@@ -1363,32 +1403,13 @@ Example:
                 appId: "1:902367347707:web:fab546c35ef5d72523815e"
             };
             
-            // Check for saved Firebase config
-            if (savedSettings) {
-                try {
-                    const settings = JSON.parse(savedSettings);
-                    if (settings.firebaseConfig) {
-                        const parsedConfig = eval(`(${settings.firebaseConfig})`);
-                        if (parsedConfig && parsedConfig.apiKey !== "YOUR-API-KEY") {
-                            firebaseConfig = parsedConfig;
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error loading Firebase config:', error);
-                }
-            }
-            
             // Main initialization
             function init() {
                 setupEventListeners();
                 
-                // Check if Firebase should be used
-                if (firebaseConfig.apiKey !== "YOUR-API-KEY") {
-                    app.useFirebase = true;
-                    loadFirebase();
-                } else {
-                    initializeApp();
-                }
+                // Always try to use Firebase with your config
+                app.useFirebase = true;
+                loadFirebase();
             }
             
             // Load Firebase scripts
@@ -1409,37 +1430,52 @@ Example:
                             
                             const settings = JSON.parse(localStorage.getItem('arkTrackerSettings') || '{}');
                             
-                            // Create the base tribe path
-                            const baseTribePath = settings.tribeName ? 
-                                `tribes/${settings.tribeName.replace(/[.#$\[\]]/g, '_')}` : 
-                                'default';
-                            
-                            // Boss tracker reference
-                            app.dataRef = app.database.ref(`${baseTribePath}/bossTracker`);
-                            app.dataRef.on('value', (snapshot) => {
-                                app.checkedItems = snapshot.val() || {};
-                                renderBosses();
-                                updateStatus('🟢 Connected - Real-time sync active', '#81c784');
-                            });
-                            
-                            // Inventory reference - use a cleaner path structure
-                            app.inventoryRef = app.database.ref(`${baseTribePath}/inventory`);
-                            console.log('Inventory path:', `${baseTribePath}/inventory`);
-                            
-                            app.inventoryRef.on('value', (snapshot) => {
-                                const data = snapshot.val();
-                                console.log('Inventory data from Firebase:', data);
-                                if (data) {
-                                    app.inventory = data;
-                                    updateInventoryCounter();
-                                    // Update UI if inventory modal is open
-                                    if (document.getElementById('inventoryModalOverlay').classList.contains('active')) {
-                                        loadInventoryModal();
+                            if (settings.tribeName) {
+                                // Hide tribe notice if tribe is set
+                                document.getElementById('tribeNotice').style.display = 'none';
+                                
+                                // Create the base tribe path
+                                const baseTribePath = `tribes/${settings.tribeName.replace(/[.#$\[\]]/g, '_')}`;
+                                
+                                // Boss tracker reference
+                                app.dataRef = app.database.ref(`${baseTribePath}/bossTracker`);
+                                app.dataRef.on('value', (snapshot) => {
+                                    app.checkedItems = snapshot.val() || {};
+                                    renderBosses();
+                                    updateStatus('🟢 Connected - Real-time sync active', '#81c784');
+                                }, (error) => {
+                                    console.error('Boss tracker sync error:', error);
+                                    updateStatus('⚠️ Sync error - Check connection', '#ff9800');
+                                });
+                                
+                                // Inventory reference
+                                app.inventoryRef = app.database.ref(`${baseTribePath}/inventory`);
+                                console.log('Inventory path:', `${baseTribePath}/inventory`);
+                                
+                                app.inventoryRef.on('value', (snapshot) => {
+                                    const data = snapshot.val();
+                                    console.log('Inventory data from Firebase:', data);
+                                    if (data) {
+                                        app.inventory = {
+                                            artifacts: data.artifacts || {},
+                                            tributes: data.tributes || {},
+                                            bossTrophies: data.bossTrophies || {}
+                                        };
+                                        updateInventoryCounter();
+                                        // Update UI if inventory modal is open
+                                        if (document.getElementById('inventoryModalOverlay').classList.contains('active')) {
+                                            loadInventoryModal();
+                                        }
                                     }
-                                }
-                            }, (error) => {
-                                console.error('Inventory listener error:', error);
-                            });
+                                }, (error) => {
+                                    console.error('Inventory sync error:', error);
+                                });
+                            } else {
+                                // No tribe name set
+                                console.log('No tribe name set - Firebase sync disabled');
+                                updateStatus('⚠️ Set tribe name in Settings for sync', '#ff9800');
+                                initializeApp();
+                            }
                             
                         } catch (error) {
                             console.error('Firebase initialization error:', error);
@@ -1450,6 +1486,7 @@ Example:
                 };
                 
                 script1.onerror = () => {
+                    console.error('Failed to load Firebase');
                     app.useFirebase = false;
                     initializeApp();
                 };
@@ -1627,9 +1664,9 @@ Example:
             
             // Update inventory counter
             function updateInventoryCounter() {
-                const artifactCount = Object.values(app.inventory.artifacts).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
-                const tributeCount = Object.values(app.inventory.tributes).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
-                const trophyCount = Object.values(app.inventory.bossTrophies).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const artifactCount = Object.values(app.inventory.artifacts || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const tributeCount = Object.values(app.inventory.tributes || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const trophyCount = Object.values(app.inventory.bossTrophies || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
                 const totalCount = artifactCount + tributeCount + trophyCount;
                 
                 const counterText = document.getElementById('inventoryCountText');
@@ -1677,7 +1714,7 @@ Example:
                             distributed.tributes[itemId] = 0;
                         }
                         // Add the required quantity for this boss/difficulty
-                        const bossData = app.bossRequirements[difficulty][bossId];
+                        const bossData = app.bossRequirements[difficulty] && app.bossRequirements[difficulty][bossId];
                         if (bossData && bossData.tributes && bossData.tributes[itemId]) {
                             distributed.tributes[itemId] += bossData.tributes[itemId];
                         }
@@ -1697,47 +1734,40 @@ Example:
                 const savedSettings = localStorage.getItem('arkTrackerSettings');
                 if (savedSettings) {
                     const settings = JSON.parse(savedSettings);
-                    document.getElementById('firebaseConfig').value = settings.firebaseConfig || '';
                     document.getElementById('tribeName').value = settings.tribeName || '';
                 }
                 
                 const syncStatus = document.getElementById('syncStatus');
                 const syncStatusText = document.getElementById('syncStatusText');
                 
-                if (app.useFirebase) {
+                const settings = JSON.parse(localStorage.getItem('arkTrackerSettings') || '{}');
+                if (app.useFirebase && settings.tribeName) {
                     syncStatus.className = 'sync-status active';
                     syncStatusText.textContent = 'Connected to Firebase';
                 } else {
                     syncStatus.className = 'sync-status inactive';
-                    syncStatusText.textContent = 'Local Mode Only';
+                    syncStatusText.textContent = settings.tribeName ? 'Connecting...' : 'No Tribe Name Set';
                 }
             }
             
             // Save settings
             function saveSettings() {
-                const configText = document.getElementById('firebaseConfig').value.trim();
                 const tribeName = document.getElementById('tribeName').value.trim();
                 
-                const settings = {
-                    firebaseConfig: configText,
-                    tribeName: tribeName,
-                    customRequirements: app.bossRequirements,
-                    showInventory: app.showInventory
-                };
+                if (!tribeName) {
+                    alert('Please enter a tribe name to enable sync!');
+                    return;
+                }
+                
+                const settings = JSON.parse(localStorage.getItem('arkTrackerSettings') || '{}');
+                settings.tribeName = tribeName;
+                settings.customRequirements = app.bossRequirements;
+                settings.showInventory = app.showInventory;
                 
                 localStorage.setItem('arkTrackerSettings', JSON.stringify(settings));
                 
-                if (configText) {
-                    try {
-                        eval(`(${configText})`);
-                        alert('Settings saved! The page will reload to apply Firebase configuration.');
-                        location.reload();
-                    } catch (error) {
-                        alert('Invalid Firebase configuration format. Please check and try again.');
-                    }
-                } else {
-                    document.getElementById('modalOverlay').classList.remove('active');
-                }
+                alert('Settings saved! The page will reload to apply changes.');
+                location.reload();
             }
             
             // Load requirements editor
@@ -1900,6 +1930,7 @@ Example:
             // Update quantity
             function updateQuantity(id, quantity) {
                 const bossData = app.editingRequirements[app.currentEditDiff][app.currentBoss];
+                if (!bossData.tributes) bossData.tributes = {};
                 bossData.tributes[id] = quantity;
             }
             
@@ -1954,6 +1985,8 @@ Example:
             
             // Load inventory modal
             function loadInventoryModal() {
+                console.log('Loading inventory modal...');
+                
                 // Load artifacts
                 const artifactsList = document.getElementById('artifactsInventoryList');
                 artifactsList.innerHTML = '';
@@ -1970,7 +2003,7 @@ Example:
                     quantity.type = 'number';
                     quantity.className = 'inventory-item-quantity';
                     quantity.id = `inv-artifact-${id}`;
-                    quantity.value = app.inventory.artifacts[id] || 0;
+                    quantity.value = (app.inventory.artifacts && app.inventory.artifacts[id]) || 0;
                     quantity.min = 0;
                     
                     item.appendChild(nameEl);
@@ -1994,7 +2027,7 @@ Example:
                     quantity.type = 'number';
                     quantity.className = 'inventory-item-quantity';
                     quantity.id = `inv-tribute-${id}`;
-                    quantity.value = app.inventory.tributes[id] || 0;
+                    quantity.value = (app.inventory.tributes && app.inventory.tributes[id]) || 0;
                     quantity.min = 0;
                     
                     item.appendChild(nameEl);
@@ -2018,7 +2051,7 @@ Example:
                     quantity.type = 'number';
                     quantity.className = 'inventory-item-quantity';
                     quantity.id = `inv-trophy-${id}`;
-                    quantity.value = app.inventory.bossTrophies[id] || 0;
+                    quantity.value = (app.inventory.bossTrophies && app.inventory.bossTrophies[id]) || 0;
                     quantity.min = 0;
                     
                     item.appendChild(nameEl);
@@ -2029,112 +2062,135 @@ Example:
                 updateInventorySummary();
             }
             
-            // Save inventory - FIXED VERSION
+            // Save inventory - ROBUST VERSION
             function saveInventory() {
                 console.log('Starting inventory save...');
                 
                 // Show saving state
                 const saveBtn = document.getElementById('inventorySaveBtn');
+                if (!saveBtn) {
+                    console.error('Save button not found!');
+                    return;
+                }
+                
                 const originalText = saveBtn.textContent;
                 saveBtn.textContent = 'Saving...';
                 saveBtn.disabled = true;
                 
                 try {
+                    // Create a clean inventory object
+                    const inventoryToSave = {
+                        artifacts: {},
+                        tributes: {},
+                        bossTrophies: {}
+                    };
+                    
                     // Save artifacts
-                    Object.keys(app.itemNames.artifacts).forEach(id => {
+                    Object.keys(app.itemNames.artifacts || {}).forEach(id => {
                         const input = document.getElementById(`inv-artifact-${id}`);
                         if (input) {
                             const value = parseInt(input.value) || 0;
                             if (value > 0) {
-                                app.inventory.artifacts[id] = value;
-                            } else {
-                                delete app.inventory.artifacts[id];
+                                inventoryToSave.artifacts[id] = value;
                             }
                         }
                     });
                     
                     // Save tributes
-                    Object.keys(app.itemNames.tributes).forEach(id => {
+                    Object.keys(app.itemNames.tributes || {}).forEach(id => {
                         const input = document.getElementById(`inv-tribute-${id}`);
                         if (input) {
                             const value = parseInt(input.value) || 0;
                             if (value > 0) {
-                                app.inventory.tributes[id] = value;
-                            } else {
-                                delete app.inventory.tributes[id];
+                                inventoryToSave.tributes[id] = value;
                             }
                         }
                     });
                     
                     // Save boss trophies
-                    Object.keys(app.itemNames.bossTrophies).forEach(id => {
+                    Object.keys(app.itemNames.bossTrophies || {}).forEach(id => {
                         const input = document.getElementById(`inv-trophy-${id}`);
                         if (input) {
                             const value = parseInt(input.value) || 0;
                             if (value > 0) {
-                                app.inventory.bossTrophies[id] = value;
-                            } else {
-                                delete app.inventory.bossTrophies[id];
+                                inventoryToSave.bossTrophies[id] = value;
                             }
                         }
                     });
                     
-                    // Always save to localStorage first
-                    localStorage.setItem('arkInventory', JSON.stringify(app.inventory));
-                    console.log('Saved to localStorage:', app.inventory);
+                    // Update app inventory
+                    app.inventory = inventoryToSave;
                     
-                    // Save to Firebase if connected
-                    if (app.useFirebase && app.inventoryRef) {
-                        console.log('Attempting Firebase save...');
-                        app.inventoryRef.set(app.inventory)
+                    // Always save to localStorage first
+                    localStorage.setItem('arkInventory', JSON.stringify(inventoryToSave));
+                    console.log('Saved to localStorage:', inventoryToSave);
+                    
+                    // Check if we have a tribe name
+                    const settings = JSON.parse(localStorage.getItem('arkTrackerSettings') || '{}');
+                    
+                    // Save to Firebase if connected and has tribe
+                    if (app.useFirebase && app.inventoryRef && settings.tribeName) {
+                        console.log('Firebase is enabled, attempting save...');
+                        console.log('inventoryRef path:', app.inventoryRef.toString());
+                        
+                        app.inventoryRef.set(inventoryToSave)
                             .then(() => {
                                 console.log('Firebase save successful!');
-                                // Reset button
                                 saveBtn.textContent = originalText;
                                 saveBtn.disabled = false;
                                 
-                                // Update UI
                                 updateInventoryCounter();
                                 if (app.showInventory) {
                                     renderBosses();
                                 }
                                 
-                                alert('Inventory saved successfully to Firebase!');
+                                alert('✅ Inventory saved to Firebase!');
                                 document.getElementById('inventoryModalOverlay').classList.remove('active');
                             })
                             .catch((error) => {
                                 console.error('Firebase save error:', error);
-                                // Reset button
                                 saveBtn.textContent = originalText;
                                 saveBtn.disabled = false;
                                 
-                                alert(`Firebase save failed: ${error.message}\n\nInventory saved locally only.`);
+                                if (error.code === 'PERMISSION_DENIED') {
+                                    alert('❌ Permission Denied!\n\nCheck Firebase rules or try again.');
+                                } else {
+                                    alert(`❌ Firebase Error: ${error.message}\n\nSaved locally only.`);
+                                }
                             });
                     } else {
-                        // Local only - no Firebase
-                        console.log('No Firebase connection, saved locally only');
+                        // Local only
+                        console.log('Saving locally only');
+                        console.log('Tribe name:', settings.tribeName);
+                        console.log('useFirebase:', app.useFirebase);
+                        console.log('inventoryRef exists:', !!app.inventoryRef);
                         
-                        // Reset button
                         saveBtn.textContent = originalText;
                         saveBtn.disabled = false;
                         
-                        // Update UI
                         updateInventoryCounter();
                         if (app.showInventory) {
                             renderBosses();
                         }
                         
-                        alert('Inventory saved locally!');
+                        const message = !settings.tribeName ? 
+                            '✅ Inventory saved locally!\n\n⚠️ Set a Tribe Name in Settings to enable sync' :
+                            '✅ Inventory saved locally!';
+                            
+                        alert(message);
                         document.getElementById('inventoryModalOverlay').classList.remove('active');
                     }
                     
                 } catch (error) {
                     console.error('Save inventory error:', error);
-                    // Reset button
-                    saveBtn.textContent = originalText;
-                    saveBtn.disabled = false;
+                    console.error('Error stack:', error.stack);
                     
-                    alert(`Error saving inventory: ${error.message}`);
+                    if (saveBtn) {
+                        saveBtn.textContent = originalText;
+                        saveBtn.disabled = false;
+                    }
+                    
+                    alert(`❌ Error: ${error.message}`);
                 }
             }
             
@@ -2144,8 +2200,8 @@ Example:
                 summaryContent.innerHTML = '';
                 
                 // Count artifacts
-                const artifactCount = Object.values(app.inventory.artifacts).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
-                const artifactTypes = Object.keys(app.inventory.artifacts).length;
+                const artifactCount = Object.values(app.inventory.artifacts || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const artifactTypes = Object.keys(app.inventory.artifacts || {}).length;
                 
                 const artifactSummary = document.createElement('div');
                 artifactSummary.className = 'inventory-summary-item';
@@ -2156,8 +2212,8 @@ Example:
                 summaryContent.appendChild(artifactSummary);
                 
                 // Count tributes
-                const tributeTypes = Object.keys(app.inventory.tributes).length;
-                const totalTributes = Object.values(app.inventory.tributes).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const tributeTypes = Object.keys(app.inventory.tributes || {}).length;
+                const totalTributes = Object.values(app.inventory.tributes || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
                 
                 const tributeSummary = document.createElement('div');
                 tributeSummary.className = 'inventory-summary-item';
@@ -2168,8 +2224,8 @@ Example:
                 summaryContent.appendChild(tributeSummary);
                 
                 // Count boss trophies
-                const trophyCount = Object.values(app.inventory.bossTrophies).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
-                const trophyTypes = Object.keys(app.inventory.bossTrophies).length;
+                const trophyCount = Object.values(app.inventory.bossTrophies || {}).reduce((sum, qty) => sum + (parseInt(qty) || 0), 0);
+                const trophyTypes = Object.keys(app.inventory.bossTrophies || {}).length;
                 
                 const trophySummary = document.createElement('div');
                 trophySummary.className = 'inventory-summary-item';
@@ -2190,17 +2246,17 @@ Example:
                 
                 // List all items with quantities
                 const allItems = [
-                    ...Object.entries(app.inventory.artifacts).map(([id, qty]) => ({
+                    ...Object.entries(app.inventory.artifacts || {}).map(([id, qty]) => ({
                         name: app.itemNames.artifacts[id],
                         qty: parseInt(qty) || 0,
                         type: 'artifact'
                     })),
-                    ...Object.entries(app.inventory.tributes).map(([id, qty]) => ({
+                    ...Object.entries(app.inventory.tributes || {}).map(([id, qty]) => ({
                         name: app.itemNames.tributes[id],
                         qty: parseInt(qty) || 0,
                         type: 'tribute'
                     })),
-                    ...Object.entries(app.inventory.bossTrophies).map(([id, qty]) => ({
+                    ...Object.entries(app.inventory.bossTrophies || {}).map(([id, qty]) => ({
                         name: app.itemNames.bossTrophies[id],
                         qty: parseInt(qty) || 0,
                         type: 'trophy'
@@ -2217,6 +2273,15 @@ Example:
                     `;
                     summaryContent.appendChild(itemDiv);
                 });
+                
+                if (allItems.length === 0) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.color = '#666';
+                    emptyDiv.style.textAlign = 'center';
+                    emptyDiv.style.marginTop = '20px';
+                    emptyDiv.textContent = 'No items in inventory';
+                    summaryContent.appendChild(emptyDiv);
+                }
             }
             
             // Render boss cards
@@ -2266,26 +2331,25 @@ Example:
                 titleContent.style.display = 'flex';
                 titleContent.style.alignItems = 'center';
                 
-                // Create icon with fallback
                 const iconImg = document.createElement('img');
-                iconImg.src = bossData.icon;
-                iconImg.alt = bossName;
-                iconImg.className = 'boss-icon';
-                iconImg.onerror = function() {
-                    this.style.display = 'none';
-                    const fallback = document.createElement('span');
-                    fallback.style.fontSize = '28px';
-                    fallback.style.marginRight = '10px';
-                    fallback.textContent = app.bossEmojis[bossId];
-                    this.parentNode.insertBefore(fallback, this);
-                };
-                
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'boss-name';
-                nameSpan.textContent = bossName;
-                
-                titleContent.appendChild(iconImg);
-                titleContent.appendChild(nameSpan);
+				iconImg.src = bossData.icon;
+				iconImg.alt = bossName;
+				iconImg.className = 'boss-icon';
+				iconImg.onerror = function() {
+					this.style.display = 'none';
+					const fallback = document.createElement('span');
+					fallback.style.fontSize = '28px';
+					fallback.style.marginRight = '10px';
+					fallback.textContent = app.bossEmojis[bossId];
+					this.parentNode.insertBefore(fallback, this);
+				};
+
+				const nameSpan = document.createElement('span');
+				nameSpan.className = 'boss-name';
+				nameSpan.textContent = bossName;
+
+				titleContent.appendChild(iconImg);  // Changed from iconSpan
+				titleContent.appendChild(nameSpan);
                 
                 const badge = document.createElement('span');
                 badge.className = 'complete-badge';
